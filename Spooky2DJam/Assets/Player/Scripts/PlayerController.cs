@@ -43,7 +43,6 @@ public class PlayerController : MonoBehaviour
         // get A and D press to movement
         playerInput = Input.GetAxisRaw("Horizontal");
         
-
         JumpAction();
 
         CameraUpdatePosition();
@@ -107,7 +106,9 @@ public class PlayerController : MonoBehaviour
             {
                 timerToIdle += Time.deltaTime;
                 if(timerToIdle > 3)
+                {
                     Idle(idleFrames);
+                }
             }
         }
         else
