@@ -9,6 +9,7 @@ public class EnemyController : MonoBehaviour
     public SpriteRenderer enemySprite;
     public BoxCollider2D enemyMouth;
     public GameObject playerReference;
+    public AudioSource monsterSound;
     private bool playerIsNotDead = true;
 
     [SerializeField] private Sprite[] killFrame;
@@ -20,7 +21,17 @@ public class EnemyController : MonoBehaviour
     private float framerate = .15f;
     public SpriteRenderer spriteRenderer;
 
-
+    void Awake()
+    {
+        Rigidbody2D[] gos = FindObjectsByType<Rigidbody2D>(0);
+        foreach (Rigidbody2D go in gos)
+        {
+            if (go.gameObject.name == "Player")
+            {
+                playerReference = go.gameObject;
+            }
+        }
+    }
 
 
     // Start is called before the first frame update
@@ -135,6 +146,8 @@ public class EnemyController : MonoBehaviour
                         rb.velocity.y
                     );
                 enemySprite.flipX = false;
+                if(!monsterSound.isPlaying)
+                    monsterSound.Play();
             }
             else if (resultsLeftCast[0].transform.gameObject.name == "Player")
             {
@@ -143,6 +156,8 @@ public class EnemyController : MonoBehaviour
                         rb.velocity.y
                     );
                 enemySprite.flipX = true;
+                if (!monsterSound.isPlaying)
+                    monsterSound.Play();
             }
             else
             {

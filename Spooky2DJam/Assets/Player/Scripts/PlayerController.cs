@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // A simple 2D movement controller for a player in Unity
 public class PlayerController : MonoBehaviour
@@ -8,6 +9,8 @@ public class PlayerController : MonoBehaviour
     private float jumpForce = 24f;
     private Rigidbody2D rb;
 
+    [SerializeField] private GameObject background1;
+    [SerializeField] private GameObject background2;
     [SerializeField] private GameObject wallLight;
     [SerializeField] private float speed = 250f;
     [SerializeField] private Camera playerCamera;
@@ -22,7 +25,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Sprite[] lastDeathByFallFrame;
     [SerializeField] private Sprite[] dieByEnemyFrame;
     [SerializeField] private Sprite[] lastDeathByEnemyFrame;
+    [SerializeField] private fade canvasRef;
 
+    [SerializeField] private TMPro.TextMeshProUGUI textLamps;
+
+    public int lampsSeted = 0;
+    public int maxLamps = 0;
+    public int maxUserLamps = 20;
     private int currentFrameWalk;
     private int currentFrameDrop;
     private int currentFrameIdle;
@@ -39,22 +48,44 @@ public class PlayerController : MonoBehaviour
     private bool playerIsDead = false;
     private bool isDoneDieing = false;
     private bool isDeadByFall = false;
+    private bool markedToDeath = false;
+    private bool removeBackground = false;
     private int firstFrameDeath = 0;
+    private float deadTimer;
 
     private void Awake()
     {
+        // Get component references
+        rb = GetComponent<Rigidbody2D>();
         spriteRenderer = gameObject.GetComponentInChildren<SpriteRenderer>();
+        rb.velocity = Vector2.zero;
+
     }
 
     private void Start()
     {
-        // Get component references
-        rb = GetComponent<Rigidbody2D>();
+        
     }
 
 
     private void Update()
     {
+        if (removeBackground)
+        {
+            background1.SetActive(false);
+            background2.SetActive(false);
+        }
+        if(gameObject.transform.position.y < -499f && isDoneDieing)
+        {
+            if(lampsSeted == maxLamps)
+            {
+                ShowMonster();
+            }
+            else
+            {
+                DieScreen();
+            }
+        }
         if (!playerIsDead)
         {
             // get A and D press to movement
@@ -68,7 +99,10 @@ public class PlayerController : MonoBehaviour
             SpriteAnimation();
 
             PlaceLights();
-        }else if (!isDoneDieing)
+
+            CheckFallDeath();
+        }
+        else if (!isDoneDieing)
         {
             rb.velocity = new Vector2(0, 0);
             if (isDeadByFall)
@@ -85,13 +119,59 @@ public class PlayerController : MonoBehaviour
             rb.velocity = new Vector2(0, 0);
             if (isDeadByFall)
             {
+                deadTimer += Time.deltaTime;
+                if(deadTimer > 3)
+                {
+                    DieScreen();
+                }
                 spriteRenderer.sprite = lastDeathByFallFrame[0];
             }
             else
             {
+                deadTimer += Time.deltaTime;
+                if (deadTimer > 3)
+                {
+                    DieScreen();
+                }
                 spriteRenderer.sprite = lastDeathByEnemyFrame[0];
             }
         }
+
+        UpdateLampStatus();
+    }
+
+    private void DieScreen()
+    {
+        SceneManager.LoadScene("DeathScene");
+    }
+
+    private void ShowMonster()
+    {
+        canvasRef.OnButtonClick();
+    }
+
+    private void UpdateLampStatus()
+    {
+        textLamps.text = lampsSeted + " / " + maxLamps;
+    }
+
+    private void CheckFallDeath()
+    {
+        if (rb.velocity.y < -300f)
+        {
+            removeBackground = true;
+        }
+        if (rb.velocity.y < -60f)
+            {
+            markedToDeath = true;
+        }
+        if (rb.velocity.y == 0f && markedToDeath)
+        {
+            
+            playerIsDead = true;
+            isDeadByFall = true;
+        }
+      
         
     }
 
@@ -125,22 +205,43 @@ public class PlayerController : MonoBehaviour
             int a = rb.Cast(new Vector2(1, 0), resultsRightCast);
             int b = rb.Cast(new Vector2(-1, 0), resultsLeftCast);
 
-            GameObject go = Instantiate(wallLight);
+            GameObject go;
+
+            LightCheckPlacement leftWallscheck = resultsLeftCast[0].transform.gameObject.GetComponent<LightCheckPlacement>();
+            LightCheckPlacement rightWallscheck = resultsRightCast[0].transform.gameObject.GetComponent<LightCheckPlacement>();
+
+
             if (resultsRightCast[0].transform.gameObject.name == "RightWall" &&
                resultsLeftCast[0].transform.gameObject.name == "LeftWall")
             {
                 if (resultsRightCast[0].distance < resultsLeftCast[0].distance)
                 {
-                    go.transform.position = new Vector3(resultsRightCast[0].transform.position.x+.23f,
-                                                        resultsRightCast[0].transform.position.y,
-                                                        resultsRightCast[0].transform.position.z);
+                    if (!rightWallscheck.alreadySeted && maxUserLamps!=0)
+                    {
+                        rightWallscheck.alreadySeted = true;
+                        go = Instantiate(wallLight);
+                        go.transform.position = new Vector3(resultsRightCast[0].transform.position.x + .23f,
+                                                            resultsRightCast[0].transform.position.y,
+                                                            resultsRightCast[0].transform.position.z);
+                        lampsSeted++;
+                        maxUserLamps--;
+                    }
+                   
                 }
                 else
                 {
-                    go.transform.position = new Vector3(resultsLeftCast[0].transform.position.x - .23f,
-                                                        resultsLeftCast[0].transform.position.y,
-                                                        resultsLeftCast[0].transform.position.z);
-                    go.transform.Rotate(0, 180, 0);
+                    if (!leftWallscheck.alreadySeted && maxUserLamps != 0)
+                    {
+                        leftWallscheck.alreadySeted = true;
+                        go = Instantiate(wallLight);
+                        go.transform.position = new Vector3(resultsLeftCast[0].transform.position.x - .23f,
+                                                            resultsLeftCast[0].transform.position.y,
+                                                            resultsLeftCast[0].transform.position.z);
+                        go.transform.Rotate(0, 180, 0);
+                        lampsSeted++;
+                        maxUserLamps--;
+                    }
+                    
                 }
             }
             
@@ -299,6 +400,13 @@ public class PlayerController : MonoBehaviour
     public void DeathByEnemy()
     {
         playerIsDead = true;
+    }
+
+    
+
+    public void SetLevelsForLamps(int value)
+    {
+        maxLamps = value;
     }
 
     private void FixedUpdate()
